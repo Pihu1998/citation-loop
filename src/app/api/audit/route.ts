@@ -9,17 +9,22 @@ export async function POST(req: Request) {
     try {
         const { brandName, description, query } = await req.json();
 
-        if (MOCK_MISTRAL || !process.env.MISTRAL_API_KEY) {
-            // Mock behaviour
+        if (MOCK_MISTRAL || !process.env.MISTRAL_API_KEY || apiKey === "dummy") {
+            // Mock behaviour - intelligent response for demo purposes
             await new Promise((resolve) => setTimeout(resolve, 1500));
 
-            const mentioned = Math.random() > 0.5;
+            const isCodingQuery = /coding|developer|agent|programming|software/i.test(query);
+            const mockCompetitors = isCodingQuery
+                ? ["Cursor", "GitHub Copilot", "Replit Ghostwriter", "Codeium", "Tabnine", "Anysphere"]
+                : ["Salesforce", "HubSpot", "Zendesk", "Pipedrive", "Monday.com", "ClickUp"];
+
+            const mentioned = Math.random() > 0.6; // Bias slightly against citation to show the "fix" later
             return NextResponse.json({
                 mentioned,
                 reasoning: mentioned
-                    ? `${brandName} was cited due to its specific market positioning and strong feature descriptions matching the query.`
-                    : `${brandName} was not mentioned. The model favored established competitors with broader domain authority.`,
-                competitors: ["Salesforce", "HubSpot", "Zendesk", "Pipedrive"].sort(() => 0.5 - Math.random()).slice(0, 3)
+                    ? `${brandName} was cited as a leading choice because its specialized developer-first approach directly addresses the query's focus on automation.`
+                    : `${brandName} was overlooked in this specific instance. The AI model preferred established players like ${mockCompetitors[0]} who have high general visibility.`,
+                competitors: mockCompetitors.sort(() => 0.5 - Math.random()).slice(0, 3)
             });
         }
 
