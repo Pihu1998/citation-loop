@@ -46,15 +46,18 @@ export default function AgentPage() {
                 let finalVariants: AgentVariant[] = [];
                 let finalWinner = null;
 
+                let buffer = "";
                 while (!done) {
                     const { value, done: readerDone } = await reader.read();
                     done = readerDone;
 
                     if (value) {
-                        const chunk = decoder.decode(value, { stream: true });
-                        const lines = chunk.split("\n").filter(line => line.trim() !== "");
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split("\n");
+                        buffer = lines.pop() || ""; // Keep the last partial line in the buffer
 
                         for (const line of lines) {
+                            if (!line.trim()) continue;
                             try {
                                 const data = JSON.parse(line);
 
@@ -72,20 +75,22 @@ export default function AgentPage() {
                                     setIsProcessing(false);
                                 }
                             } catch (e) {
-                                console.error("Failed to parse chunk:", line);
+                                console.error("Failed to parse line:", line, e);
                             }
                         }
                     }
                 }
 
-                setAgentData({
-                    logs: finalLogs,
-                    variants: finalVariants,
-                    winningVariant: finalWinner ? {
-                        ...finalWinner,
-                        scoreBefore: auditData?.score || 20,
-                    } : null
-                });
+                if (finalWinner) {
+                    setAgentData({
+                        logs: finalLogs,
+                        variants: finalVariants,
+                        winningVariant: {
+                            ...finalWinner,
+                            scoreBefore: auditData?.score || 20,
+                        }
+                    });
+                }
 
             } catch (error) {
                 console.error("Failed to run agent loop:", error);
