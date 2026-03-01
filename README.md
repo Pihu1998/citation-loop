@@ -28,6 +28,11 @@ Open [http://localhost:3000](http://localhost:3000).
 3. **Agent Loop**: A ReAct-style reasoning terminal where the AI extracts patterns from winners and generates optimized content.
 4. **Results**: Before/After visibility impact maps and a winning content snippet ready for deployment.
 
+### 🧪 Sample Test Data (For Quick Demo)
+- **Brand Name**: `Antigravity AI`
+- **Description**: `An autonomous AI developer tool that automates complex coding tasks, bug fixes, and system migrations with specialized reasoning loops that outperform standard LLM wrappers.`
+- **Target Queries**: `best AI coding assistant, top agentic AI tools, autonomous developer agents`
+
 ## 🛠 Tech Stack
 - **Frontend**: Next.js 15, Tailwind CSS, shadcn/ui, Recharts, Framer Motion
 - **AI**: Mistral AI (Large for reasoning, Small for bulk testing)
