@@ -1,65 +1,100 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAppContext } from "@/context/AppContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Target, Search, Sparkles } from "lucide-react";
 
 export default function Home() {
+  const { setBrandData } = useAppContext();
+  const router = useRouter();
+
+  const [name, setName] = useState("");
+  const [desc, setDesc] = useState("");
+  const [queryInput, setQueryInput] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const queries = queryInput
+      .split(",")
+      .map((q) => q.trim())
+      .filter((q) => q.length > 0);
+
+    if (queries.length < 1) {
+      alert("Please enter at least one target query.");
+      return;
+    }
+
+    setBrandData(name, desc, queries);
+    router.push("/audit");
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-background to-zinc-900">
+      <div className="max-w-xl w-full space-y-8">
+        <div className="text-center space-y-4">
+          <div className="inline-flex items-center justify-center p-3 rounded-full bg-primary/10 text-primary mb-2">
+            <Sparkles className="w-8 h-8" />
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight text-white">
+            CitationLoop
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-zinc-400 text-lg">
+            Autonomous AI visibility agent that helps brands get cited inside AI-generated answers.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+        <form onSubmit={handleSubmit} className="bg-zinc-900 border border-zinc-800 p-8 rounded-2xl shadow-xl space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="brandName" className="text-zinc-300">Brand Name</Label>
+            <Input
+              id="brandName"
+              placeholder="e.g. Acme Corp"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description" className="text-zinc-300">Product Description</Label>
+            <Textarea
+              id="description"
+              placeholder="What does your product do? What makes it special?"
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              required
+              className="min-h-[100px] bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="queries" className="text-zinc-300">Target Queries (comma separated)</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-500" />
+              <Input
+                id="queries"
+                placeholder="e.g. best CRM for startups, top project management tools"
+                value={queryInput}
+                onChange={(e) => setQueryInput(e.target.value)}
+                required
+                className="pl-9 bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+              />
+            </div>
+            <p className="text-xs text-zinc-500 mt-1">Enter 3-5 queries where you want your brand to appear.</p>
+          </div>
+
+          <Button type="submit" className="w-full text-md py-6" size="lg">
+            <Target className="mr-2 h-5 w-5" />
+            Start Audit
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }
