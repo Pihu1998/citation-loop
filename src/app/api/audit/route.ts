@@ -1,24 +1,26 @@
 import { NextResponse } from "next/server";
 import { Mistral } from "@mistralai/mistralai";
+import { OpenAI } from "openai";
 
 const MOCK_MISTRAL = process.env.MOCK_MISTRAL === "true";
-const apiKey = process.env.MISTRAL_API_KEY || "dummy";
-const client = new Mistral({ apiKey });
+const mistralKey = process.env.MISTRAL_API_KEY;
+const openaiKey = process.env.OPENAI_API_KEY;
+
+const mistralClient = mistralKey && mistralKey !== "dummy" ? new Mistral({ apiKey: mistralKey }) : null;
+const openaiClient = openaiKey && openaiKey !== "dummy" ? new OpenAI({ apiKey: openaiKey }) : null;
 
 export async function POST(req: Request) {
     try {
         const { brandName, description, query } = await req.json();
 
-        if (MOCK_MISTRAL || !process.env.MISTRAL_API_KEY || apiKey === "dummy") {
-            // Mock behaviour - intelligent response for demo purposes
+        // 1. Mock Mode Check
+        if (MOCK_MISTRAL || (!mistralClient && !openaiClient)) {
             await new Promise((resolve) => setTimeout(resolve, 1500));
-
             const isCodingQuery = /coding|developer|agent|programming|software/i.test(query);
             const mockCompetitors = isCodingQuery
                 ? ["Cursor", "GitHub Copilot", "Replit Ghostwriter", "Codeium", "Tabnine", "Anysphere"]
                 : ["Salesforce", "HubSpot", "Zendesk", "Pipedrive", "Monday.com", "ClickUp"];
-
-            const mentioned = Math.random() > 0.6; // Bias slightly against citation to show the "fix" later
+            const mentioned = Math.random() > 0.6;
             return NextResponse.json({
                 mentioned,
                 reasoning: mentioned
@@ -28,34 +30,46 @@ export async function POST(req: Request) {
             });
         }
 
-        // Step 1: Generate AI response to the query
-        const chatResponse = await client.chat.complete({
-            model: "mistral-small-latest",
-            messages: [{ role: "user", content: query }],
-        });
+        let aiAnswer = "";
+        let result: any = null;
 
-        const aiAnswer = chatResponse.choices?.[0]?.message?.content || "";
+        // 2. OpenAI implementation (Priority)
+        if (openaiClient) {
+            const chatResponse = await openaiClient.chat.completions.create({
+                model: "gpt-4o-mini",
+                messages: [{ role: "user", content: query }],
+            });
+            aiAnswer = chatResponse.choices[0].message.content || "";
 
-        // Step 2: Extract details
-        const extractResponse = await client.chat.complete({
-            model: "mistral-small-latest",
-            responseFormat: { type: "json_object" },
-            messages: [
-                {
-                    role: "system",
-                    content: "You are an analyzer. Given an AI's text response to a user query, extract the requested information in JSON format with keys: 'mentioned' (boolean), 'reasoning' (string explaining why the brand was or wasn't mentioned), and 'competitors' (array of strings for other brands mentioned)."
-                },
-                {
-                    role: "user",
-                    content: `Brand to check: "${brandName}".\nAI Response: "${aiAnswer}"\n\nDid the AI mention the brand? Who else was mentioned? Provide valid JSON.`
-                }
-            ]
-        });
+            const extractResponse = await openaiClient.chat.completions.create({
+                model: "gpt-4o-mini",
+                response_format: { type: "json_object" },
+                messages: [
+                    { role: "system", content: "You are an analyzer. Extract JSON: { 'mentioned': boolean, 'reasoning': string, 'competitors': string[] }" },
+                    { role: "user", content: `Brand: "${brandName}". Answer: "${aiAnswer}". Extract JSON.` }
+                ]
+            });
+            result = JSON.parse(extractResponse.choices[0].message.content || "{}");
+        }
+        // 3. Mistral implementation (Fallback)
+        else if (mistralClient) {
+            const chatResponse = await mistralClient.chat.complete({
+                model: "mistral-small-latest",
+                messages: [{ role: "user", content: query }],
+            });
+            aiAnswer = typeof chatResponse.choices?.[0]?.message?.content === "string" ? chatResponse.choices[0].message.content : "";
 
-        const resultStr = typeof extractResponse.choices?.[0]?.message?.content === "string"
-            ? extractResponse.choices[0].message.content
-            : "{}";
-        const result = JSON.parse(resultStr);
+            const extractResponse = await mistralClient.chat.complete({
+                model: "mistral-small-latest",
+                responseFormat: { type: "json_object" },
+                messages: [
+                    { role: "system", content: "You are an analyzer. Extract JSON: { 'mentioned': boolean, 'reasoning': string, 'competitors': string[] }" },
+                    { role: "user", content: `Brand: "${brandName}". Answer: "${aiAnswer}". Extract JSON.` }
+                ]
+            });
+            const resultStr = typeof extractResponse.choices?.[0]?.message?.content === "string" ? extractResponse.choices[0].message.content : "{}";
+            result = JSON.parse(resultStr);
+        }
 
         return NextResponse.json({
             mentioned: result.mentioned || false,
@@ -63,10 +77,16 @@ export async function POST(req: Request) {
             competitors: result.competitors || []
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Audit API Error:", error);
+        if (error.status === 401 || error.statusCode === 401) {
+            return NextResponse.json(
+                { error: "AI Provider Authentication failed. Check your API keys in .env.local." },
+                { status: 401 }
+            );
+        }
         return NextResponse.json(
-            { error: "Internal Server Error" },
+            { error: "Internal Server Error during audit: " + error.message },
             { status: 500 }
         );
     }

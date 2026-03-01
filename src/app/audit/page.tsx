@@ -40,6 +40,11 @@ export default function AuditPage() {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ brandName, description, query }),
                     });
+                    if (!res.ok) {
+                        const errorData = await res.json();
+                        throw new Error(errorData.error || "Failed to fetch audit result.");
+                    }
+
                     const data = await res.json();
                     const auditResult: AuditQuery = {
                         query,
@@ -55,12 +60,12 @@ export default function AuditPage() {
                         }
                     });
 
-                } catch (error) {
+                } catch (error: any) {
                     console.error("Audit error for query:", query, error);
                     newResults.push({
                         query,
                         mentioned: false,
-                        reasoning: "Error running audit.",
+                        reasoning: `Error: ${error.message}`,
                         competitors: [],
                     });
                 }
